@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "ai-vision"
+version = "0.1.0"
+description = ""
+authors = ["Somnath Banerjee <somnath.banerjee@gmail.com>"]
+packages = [{ include = "src" },]
+
+[tool.poetry.dependencies]
+python = "^3.9.10"
+streamlit = "^1.31.1"
+openai = "^1.12.0"
+python-dotenv = "^1.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
