@@ -4,6 +4,7 @@ import base64
 import os
 
 # third-party
+import ijson
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -21,6 +22,32 @@ class OpenAIClient(object):
         self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4-vision-preview"
 
+    @staticmethod
+    def stream_json(stream, json_path="companies.item"):
+        json_objects = ijson.sendable_list()
+        coro = ijson.items_coro(json_objects, json_path)
+
+        for doc in stream:
+            content = doc.choices[0].delta.content
+            if content:
+                try:
+                    coro.send(content.encode("utf-8"))
+
+                    for json_object in json_objects:
+                        yield json_object
+                    del json_objects[:]
+                except ijson.common.IncompleteJSONError:
+                    print("Incomplete JSON", content)
+                    del json_objects[:]
+                    continue
+
+        try:                
+            coro.close()
+            for json_object in json_objects:
+                yield json_object
+        except ijson.common.IncompleteJSONError:
+            print("Failed to close JSON stream")
+    
     def image_to_text(self, prompt, img_path, **kwargs):
         messages = [
             {
@@ -40,14 +67,10 @@ class OpenAIClient(object):
             temperature=temperature,
             max_tokens=max_tokens,
             messages=messages,
+            stream=True
         )
 
-        output = response.choices[0]
-        if output.finish_reason != "stop":
-            print("Model didn't stop natrually")
-            print("Finish reason:", output.finish_reason)
-
-        return output.message.content
+        return self.stream_json(response, json_path="companies.item")
 
     def vision_image_url(self, prompt, image_url, **kwargs):
         return self.image_to_text(prompt, image_url)
